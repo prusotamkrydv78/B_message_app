@@ -30,10 +30,11 @@ export const AuthController = {
       await user.save();
 
       // Set refresh token as httpOnly cookie
+      const isProd = process.env.NODE_ENV === 'production';
       res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: isProd,              // required for SameSite=None on modern browsers
+        sameSite: isProd ? 'none' : 'lax',
         expires: expiresAt,
       });
 
@@ -63,12 +64,15 @@ export const AuthController = {
       user.refreshTokens = [...user.refreshTokens.filter(rt => rt.expiresAt > new Date()), { token: refreshToken, expiresAt }].slice(-5);
       await user.save();
 
-      res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        expires: expiresAt,
-      });
+      // only set cookie in production
+      if (process.env.NODE_ENV === 'production') {
+        res.cookie('refreshToken', refreshToken, {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'none',
+          expires: expiresAt,
+        });
+      }
 
       res.json({
         user: { id: user.id, name: user.name, phoneNumber: user.phoneNumber, countryCode: user.countryCode },
@@ -102,10 +106,11 @@ export const AuthController = {
       user.refreshTokens.push({ token: newRefreshToken, expiresAt });
       await user.save();
 
+      const isProd = process.env.NODE_ENV === 'production';
       res.cookie('refreshToken', newRefreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: isProd,
+        sameSite: isProd ? 'none' : 'lax',
         expires: expiresAt,
       });
 
