@@ -11,7 +11,7 @@ const LastMessageSchema = new mongoose.Schema(
 
 const ConversationSchema = new mongoose.Schema(
   {
-    participants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true }],
+    participants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     lastMessage: { type: LastMessageSchema, default: null },
   },
   { timestamps: true }

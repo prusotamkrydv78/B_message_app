@@ -2,7 +2,7 @@ export const config = {
   env: process.env.NODE_ENV || 'development',
   port: process.env.PORT || 4000,
   cors: {
-    origin: 'https://chatx-ten.vercel.app',
+    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
   },
   db: {
     uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/messaging_app',

@@ -22,6 +22,14 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(cookieParser());
 
+// Normalize duplicate slashes in URL (e.g., //api/v1/auth/login -> /api/v1/auth/login)
+app.use((req, _res, next) => {
+  if (typeof req.url === 'string' && req.url.includes('//')) {
+    req.url = req.url.replace(/\/+/g, '/');
+  }
+  next();
+});
+
 app.get('/', (req, res) => res.send("Backend is live!"));
 
 
