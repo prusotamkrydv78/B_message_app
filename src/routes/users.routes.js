@@ -5,5 +5,6 @@ import { requireAuth } from '../middleware/auth.js';
 const router = Router();
 
 router.get('/', requireAuth, UsersController.list);
+router.get('/validate-phone', requireAuth, UsersController.validatePhone);
 
 export default router;

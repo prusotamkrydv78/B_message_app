@@ -32,8 +32,10 @@ const userRoom = (userId) => `user:${userId}`;
 // Track currently connected users
 const connectedUsers = new Set();
 
-// Track active calls: { callerId: { target, status, startTime } }
+// Track active calls: { callerId: { target, status, startTime, type } }
 const activeCalls = new Map();
+// Track active video calls: { callerId: { target, status, startTime, type } }
+const activeVideoCalls = new Map();
 
 io.use((socket, next) => {
   try {
@@ -125,13 +127,21 @@ io.on('connection', (socket) => {
         activeCalls.delete(callerId);
       }
     }
+    // Clean up any active video calls for this user
+    for (const [callerId, call] of activeVideoCalls.entries()) {
+      if (callerId === userId || call.target === userId) {
+        const otherUser = callerId === userId ? call.target : callerId;
+        io.to(userRoom(otherUser)).emit('video_call_ended', { from: userId, reason: 'disconnect' });
+        activeVideoCalls.delete(callerId);
+      }
+    }
   });
 
   // WebRTC Voice Call Signaling
   socket.on('call_user', ({ to, offer }) => {
     if (!to) return;
-    // Check if caller or target is already in a call
-    if (activeCalls.has(userId)) {
+    // Check if caller or target is already in a call or video call
+    if (activeCalls.has(userId) || activeVideoCalls.has(userId)) {
       socket.emit('call_error', { message: 'You are already in a call' });
       return;
     }
@@ -141,8 +151,14 @@ io.on('connection', (socket) => {
         return;
       }
     }
+    for (const [callerId, call] of activeVideoCalls.entries()) {
+      if (call.target === to) {
+        socket.emit('call_error', { message: 'User is busy' });
+        return;
+      }
+    }
     // Track the call
-    activeCalls.set(userId, { target: to, status: 'calling', startTime: Date.now() });
+    activeCalls.set(userId, { target: to, status: 'calling', startTime: Date.now(), type: 'voice' });
     // Forward to target user
     io.to(userRoom(to)).emit('incoming_call', { from: userId, offer });
   });
@@ -190,6 +206,88 @@ io.on('connection', (socket) => {
   socket.on('ice_candidate', ({ to, candidate }) => {
     if (!to) return;
     io.to(userRoom(to)).emit('ice_candidate', { from: userId, candidate });
+  });
+
+  // WebRTC Video Call Signaling
+  socket.on('video_call_user', ({ to, offer }) => {
+    if (!to) return;
+    // Check if caller or target is already in a call or video call
+    if (activeCalls.has(userId) || activeVideoCalls.has(userId)) {
+      socket.emit('video_call_error', { message: 'You are already in a call' });
+      return;
+    }
+    for (const [callerId, call] of activeCalls.entries()) {
+      if (call.target === to) {
+        socket.emit('video_call_error', { message: 'User is busy' });
+        return;
+      }
+    }
+    for (const [callerId, call] of activeVideoCalls.entries()) {
+      if (call.target === to) {
+        socket.emit('video_call_error', { message: 'User is busy' });
+        return;
+      }
+    }
+    // Track the video call
+    activeVideoCalls.set(userId, { target: to, status: 'calling', startTime: Date.now(), type: 'video' });
+    // Forward to target user
+    io.to(userRoom(to)).emit('incoming_video_call', { from: userId, offer });
+  });
+
+  socket.on('answer_video_call', ({ to, answer }) => {
+    if (!to || !activeVideoCalls.has(to)) return;
+    const call = activeVideoCalls.get(to);
+    if (call.target !== userId) return;
+    // Update call status
+    call.status = 'connected';
+    // Forward answer to caller
+    io.to(userRoom(to)).emit('video_call_answered', { from: userId, answer });
+  });
+
+  socket.on('decline_video_call', ({ to }) => {
+    if (!to || !activeVideoCalls.has(to)) return;
+    const call = activeVideoCalls.get(to);
+    if (call.target !== userId) return;
+    // Remove call and notify caller
+    activeVideoCalls.delete(to);
+    io.to(userRoom(to)).emit('video_call_declined', { from: userId });
+  });
+
+  socket.on('end_video_call', ({ to }) => {
+    if (!to) return;
+    // Find and remove the video call
+    let callFound = false;
+    if (activeVideoCalls.has(userId) && activeVideoCalls.get(userId).target === to) {
+      activeVideoCalls.delete(userId);
+      callFound = true;
+    } else {
+      for (const [callerId, call] of activeVideoCalls.entries()) {
+        if (callerId === to && call.target === userId) {
+          activeVideoCalls.delete(callerId);
+          callFound = true;
+          break;
+        }
+      }
+    }
+    if (callFound) {
+      io.to(userRoom(to)).emit('video_call_ended', { from: userId });
+    }
+  });
+
+  socket.on('video_ice_candidate', ({ to, candidate }) => {
+    if (!to) return;
+    io.to(userRoom(to)).emit('video_ice_candidate', { from: userId, candidate });
+  });
+
+  // Video call specific events
+  socket.on('toggle_video_mute', ({ to, isMuted }) => {
+    if (!to) return;
+    io.to(userRoom(to)).emit('video_mute_toggled', { from: userId, isMuted });
+  });
+
+  socket.on('toggle_video_camera', ({ to, isCameraOff }) => {
+    if (!to) return;
+    io.to(userRoom(to)).emit('video_camera_toggled', { from: userId, isCameraOff });
   });
 });
 

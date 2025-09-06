@@ -78,5 +78,21 @@ export const ConversationsController = {
     } catch (err) {
       next(err);
     }
+  },
+
+  delete: async (req, res, next) => {
+    try {
+      const me = req.user.id;
+      const { id } = req.params;
+      const convo = await Conversation.findById(id);
+      if (!convo) throw createError(404, 'Conversation not found');
+      const isParticipant = (convo.participants || []).some((p) => String(p) === String(me));
+      if (!isParticipant) throw createError(403, 'Not allowed');
+      
+      await Conversation.findByIdAndDelete(id);
+      res.json({ success: true, message: 'Conversation deleted' });
+    } catch (err) {
+      next(err);
+    }
   }
 };

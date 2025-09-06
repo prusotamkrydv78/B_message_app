@@ -7,5 +7,6 @@ const router = Router();
 router.get('/', requireAuth, ConversationsController.listRecent);
 router.post('/', requireAuth, ConversationsController.start);
 router.post('/:id/accept', requireAuth, ConversationsController.accept);
+router.delete('/:id', requireAuth, ConversationsController.delete);
 
 export default router;
