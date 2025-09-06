@@ -11,7 +11,7 @@ import { Conversation } from './models/Conversation.js';
 
 dotenv.config();
 
-const PORT =   4000;
+const PORT =   process.env.PORT || 4000;
 app.use(cors({
   origin: config.cors.origin,
   credentials: true,
