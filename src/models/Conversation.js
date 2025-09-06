@@ -12,6 +12,10 @@ const LastMessageSchema = new mongoose.Schema(
 const ConversationSchema = new mongoose.Schema(
   {
     participants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    // connection request status: pending until recipient accepts
+    status: { type: String, enum: ['pending', 'accepted'], default: 'pending' },
+    requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    acceptedAt: { type: Date, default: null },
     lastMessage: { type: LastMessageSchema, default: null },
   },
   { timestamps: true }

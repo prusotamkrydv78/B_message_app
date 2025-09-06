@@ -6,5 +6,6 @@ const router = Router();
 
 router.get('/', requireAuth, ConversationsController.listRecent);
 router.post('/', requireAuth, ConversationsController.start);
+router.post('/:id/accept', requireAuth, ConversationsController.accept);
 
 export default router;

@@ -76,12 +76,15 @@ io.on('connection', (socket) => {
   socket.on('send_message', async ({ to, text, conversationId, clientId }) => {
     try {
       if (!to || !text) return;
-      // find or create conversation between userId and to
+      // find conversation between userId and to
       let convo = conversationId
         ? await Conversation.findById(conversationId)
         : await Conversation.findOne({ participants: { $all: [userId, to] } });
       if (!convo) {
-        convo = await Conversation.create({ participants: [userId, to] });
+        return socket.emit('error_message', { message: 'Conversation not found' });
+      }
+      if (convo.status !== 'accepted') {
+        return socket.emit('error_message', { message: 'Connection request not accepted yet' });
       }
       const msg = await Message.create({
         conversation: convo._id,

@@ -7,6 +7,7 @@ import createError from 'http-errors';
 import { config } from './config/index.js';
 import authRoutes from './routes/auth.routes.js';
 import usersRoutes from './routes/users.routes.js';
+import contactsRoutes from './routes/contacts.routes.js';
 import conversationsRoutes from './routes/conversations.routes.js';
 import messagesRoutes from './routes/messages.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -35,6 +36,7 @@ app.get('/', (req, res) => res.send("Backend is live!"));
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', usersRoutes);
+app.use('/api/v1/contacts', contactsRoutes);
 app.use('/api/v1/conversations', conversationsRoutes);
 app.use('/api/v1/messages', messagesRoutes);
 

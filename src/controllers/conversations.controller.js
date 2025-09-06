@@ -21,6 +21,8 @@ export const ConversationsController = {
         const other = others[0] || null;
         return {
           id: c._id,
+          status: c.status || 'accepted',
+          requestedBy: c.requestedBy || null,
           otherUser: other ? {
             id: other._id,
             name: other.name,
@@ -52,11 +54,29 @@ export const ConversationsController = {
         participants: { $all: [me, userId], $size: 2 },
       });
       if (!convo) {
-        convo = await Conversation.create({ participants: [me, userId] });
+        convo = await Conversation.create({ participants: [me, userId], status: 'pending', requestedBy: me });
       }
-      res.status(201).json({ id: convo.id });
+      res.status(201).json({ id: convo.id, status: convo.status, requestedBy: convo.requestedBy });
     } catch (err) {
       next(err);
     }
   },
+  accept: async (req, res, next) => {
+    try {
+      const me = req.user.id;
+      const { id } = req.params;
+      const convo = await Conversation.findById(id);
+      if (!convo) throw createError(404, 'Conversation not found');
+      const isParticipant = (convo.participants || []).some((p) => String(p) === String(me));
+      if (!isParticipant) throw createError(403, 'Not allowed');
+      if (convo.status === 'accepted') return res.json({ id: convo.id, status: 'accepted' });
+      if (String(convo.requestedBy) === String(me)) throw createError(400, 'Requester cannot accept');
+      convo.status = 'accepted';
+      convo.acceptedAt = new Date();
+      await convo.save();
+      res.json({ id: convo.id, status: convo.status });
+    } catch (err) {
+      next(err);
+    }
+  }
 };
