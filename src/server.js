@@ -55,6 +55,7 @@ io.on('connection', (socket) => {
   connectedUsers.add(String(userId));
   // Broadcast presence update so any interested client can update UI
   io.emit('presence_update', { userId, status: 'online' });
+  console.log(`[socket] user ${userId} connected`);
 
   socket.on('typing', ({ to, isTyping }) => {
     if (!to) return;
@@ -117,6 +118,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    console.log(`[socket] user ${userId} disconnected`);
     connectedUsers.delete(String(userId));
     io.emit('presence_update', { userId, status: 'offline' });
     // Clean up any active calls for this user
@@ -139,6 +141,7 @@ io.on('connection', (socket) => {
 
   // WebRTC Voice Call Signaling
   socket.on('call_user', ({ to, offer }) => {
+    console.log(`[call_user] from=${userId} to=${to}`);
     if (!to) return;
     // Check if caller or target is already in a call or video call
     if (activeCalls.has(userId) || activeVideoCalls.has(userId)) {
@@ -161,9 +164,11 @@ io.on('connection', (socket) => {
     activeCalls.set(userId, { target: to, status: 'calling', startTime: Date.now(), type: 'voice' });
     // Forward to target user
     io.to(userRoom(to)).emit('incoming_call', { from: userId, offer });
+    console.log(`[incoming_call] delivered to=${to} from=${userId}`);
   });
 
   socket.on('answer_call', ({ to, answer }) => {
+    console.log(`[answer_call] from=${userId} to=${to}`);
     if (!to || !activeCalls.has(to)) return;
     const call = activeCalls.get(to);
     if (call.target !== userId) return;
@@ -171,18 +176,22 @@ io.on('connection', (socket) => {
     call.status = 'connected';
     // Forward answer to caller
     io.to(userRoom(to)).emit('call_answered', { from: userId, answer });
+    console.log(`[call_answered] to caller=${to} from callee=${userId}`);
   });
 
   socket.on('decline_call', ({ to }) => {
+    console.log(`[decline_call] from=${userId} to=${to}`);
     if (!to || !activeCalls.has(to)) return;
     const call = activeCalls.get(to);
     if (call.target !== userId) return;
     // Remove call and notify caller
     activeCalls.delete(to);
     io.to(userRoom(to)).emit('call_declined', { from: userId });
+    console.log(`[call_declined] notified caller=${to}`);
   });
 
   socket.on('end_call', ({ to }) => {
+    console.log(`[end_call] by=${userId} other=${to}`);
     if (!to) return;
     // Find and remove the call
     let callFound = false;
@@ -200,16 +209,20 @@ io.on('connection', (socket) => {
     }
     if (callFound) {
       io.to(userRoom(to)).emit('call_ended', { from: userId });
+      console.log(`[call_ended] sent to=${to}`);
     }
   });
 
   socket.on('ice_candidate', ({ to, candidate }) => {
+    // Avoid logging entire candidate for brevity
+    if (to) console.log(`[ice_candidate] from=${userId} to=${to}`);
     if (!to) return;
     io.to(userRoom(to)).emit('ice_candidate', { from: userId, candidate });
   });
 
   // WebRTC Video Call Signaling
   socket.on('video_call_user', ({ to, offer }) => {
+    console.log(`[video_call_user] from=${userId} to=${to}`);
     if (!to) return;
     // Check if caller or target is already in a call or video call
     if (activeCalls.has(userId) || activeVideoCalls.has(userId)) {
@@ -232,9 +245,11 @@ io.on('connection', (socket) => {
     activeVideoCalls.set(userId, { target: to, status: 'calling', startTime: Date.now(), type: 'video' });
     // Forward to target user
     io.to(userRoom(to)).emit('incoming_video_call', { from: userId, offer });
+    console.log(`[incoming_video_call] delivered to=${to} from=${userId}`);
   });
 
   socket.on('answer_video_call', ({ to, answer }) => {
+    console.log(`[answer_video_call] from=${userId} to=${to}`);
     if (!to || !activeVideoCalls.has(to)) return;
     const call = activeVideoCalls.get(to);
     if (call.target !== userId) return;
@@ -242,18 +257,22 @@ io.on('connection', (socket) => {
     call.status = 'connected';
     // Forward answer to caller
     io.to(userRoom(to)).emit('video_call_answered', { from: userId, answer });
+    console.log(`[video_call_answered] to caller=${to} from callee=${userId}`);
   });
 
   socket.on('decline_video_call', ({ to }) => {
+    console.log(`[decline_video_call] from=${userId} to=${to}`);
     if (!to || !activeVideoCalls.has(to)) return;
     const call = activeVideoCalls.get(to);
     if (call.target !== userId) return;
     // Remove call and notify caller
     activeVideoCalls.delete(to);
     io.to(userRoom(to)).emit('video_call_declined', { from: userId });
+    console.log(`[video_call_declined] notified caller=${to}`);
   });
 
   socket.on('end_video_call', ({ to }) => {
+    console.log(`[end_video_call] by=${userId} other=${to}`);
     if (!to) return;
     // Find and remove the video call
     let callFound = false;
@@ -271,10 +290,12 @@ io.on('connection', (socket) => {
     }
     if (callFound) {
       io.to(userRoom(to)).emit('video_call_ended', { from: userId });
+      console.log(`[video_call_ended] sent to=${to}`);
     }
   });
 
   socket.on('video_ice_candidate', ({ to, candidate }) => {
+    if (to) console.log(`[video_ice_candidate] from=${userId} to=${to}`);
     if (!to) return;
     io.to(userRoom(to)).emit('video_ice_candidate', { from: userId, candidate });
   });

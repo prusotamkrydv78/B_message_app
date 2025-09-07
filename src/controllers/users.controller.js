@@ -48,6 +48,7 @@ export const UsersController = {
         res.json({ 
           isRegistered: true, 
           user: {
+            id: user._id,
             name: user.name,
             phoneNumber: user.phoneNumber,
             countryCode: user.countryCode
