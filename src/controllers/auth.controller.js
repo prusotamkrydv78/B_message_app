@@ -31,12 +31,15 @@ export const AuthController = {
 
       // Set refresh token as httpOnly cookie
       const isProd = process.env.NODE_ENV === 'production';
-      res.cookie('refreshToken', refreshToken, {
+      const cookieDomain = process.env.COOKIE_DOMAIN; // e.g., ".example.com"
+      const cookieOpts = {
         httpOnly: true,
         secure: isProd,              // required for SameSite=None on modern browsers
         sameSite: isProd ? 'none' : 'lax',
         expires: expiresAt,
-      });
+      };
+      if (cookieDomain) cookieOpts.domain = cookieDomain;
+      res.cookie('refreshToken', refreshToken, cookieOpts);
 
       res.status(201).json({
         user: { id: user.id, name: user.name, phoneNumber: user.phoneNumber, countryCode: user.countryCode },
@@ -66,12 +69,15 @@ export const AuthController = {
 
       // Set refresh token as httpOnly cookie
       const isProd = process.env.NODE_ENV === 'production';
-      res.cookie('refreshToken', refreshToken, {
+      const cookieDomain = process.env.COOKIE_DOMAIN; // e.g., ".example.com"
+      const cookieOpts = {
         httpOnly: true,
         secure: isProd,              // required for SameSite=None on modern browsers
         sameSite: isProd ? 'none' : 'lax',
         expires: expiresAt,
-      });
+      };
+      if (cookieDomain) cookieOpts.domain = cookieDomain;
+      res.cookie('refreshToken', refreshToken, cookieOpts);
 
       res.json({
         user: { id: user.id, name: user.name, phoneNumber: user.phoneNumber, countryCode: user.countryCode },
@@ -106,12 +112,15 @@ export const AuthController = {
       await user.save();
 
       const isProd = process.env.NODE_ENV === 'production';
-      res.cookie('refreshToken', newRefreshToken, {
+      const cookieDomain = process.env.COOKIE_DOMAIN; // e.g., ".example.com"
+      const cookieOpts = {
         httpOnly: true,
         secure: isProd,
         sameSite: isProd ? 'none' : 'lax',
         expires: expiresAt,
-      });
+      };
+      if (cookieDomain) cookieOpts.domain = cookieDomain;
+      res.cookie('refreshToken', newRefreshToken, cookieOpts);
 
       res.json({ accessToken: newAccessToken });
     } catch (err) {
@@ -122,8 +131,12 @@ export const AuthController = {
   logout: async (req, res, next) => {
     try {
       const token = req.body?.refreshToken || req.cookies?.refreshToken;
+      const isProd = process.env.NODE_ENV === 'production';
+      const cookieDomain = process.env.COOKIE_DOMAIN; // e.g., ".example.com"
+      const clearOpts = { httpOnly: true, sameSite: isProd ? 'none' : 'lax', secure: isProd };
+      if (cookieDomain) clearOpts.domain = cookieDomain;
       if (!token) {
-        res.clearCookie('refreshToken');
+        res.clearCookie('refreshToken', clearOpts);
         return res.json({ message: 'Logged out' });
       }
       try {
@@ -134,7 +147,7 @@ export const AuthController = {
           await user.save();
         }
       } catch (_) {}
-      res.clearCookie('refreshToken');
+      res.clearCookie('refreshToken', clearOpts);
       res.json({ message: 'Logged out' });
     } catch (err) {
       next(err);
