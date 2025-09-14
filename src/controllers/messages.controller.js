@@ -16,12 +16,14 @@ export const MessagesController = {
       const other = req.params.userId;
       if (!other) throw createError(400, 'userId is required');
 
-      // Find or create conversation between me and other
-      let convo = await Conversation.findOne({
+      // Find conversation between me and other (do not auto-create; creation requires requestedBy)
+      const convo = await Conversation.findOne({
         participants: { $all: [toObjectId(me), toObjectId(other)] },
       });
+
+      // If no conversation yet, return empty history
       if (!convo) {
-        convo = await Conversation.create({ participants: [me, other] });
+        return res.json({ conversationId: null, messages: [], calls: [], combined: [] });
       }
 
       const messages = await Message.find({ conversation: convo._id })

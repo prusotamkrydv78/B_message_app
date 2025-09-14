@@ -84,10 +84,10 @@ io.on('connection', (socket) => {
         ? await Conversation.findById(conversationId)
         : await Conversation.findOne({ participants: { $all: [userId, to] } });
       if (!convo) {
-        return socket.emit('error_message', { message: 'Conversation not found' });
+        return socket.emit('error_message', { message: 'Conversation not found', clientId: clientId || null });
       }
       if (convo.status !== 'accepted') {
-        return socket.emit('error_message', { message: 'Connection request not accepted yet' });
+        return socket.emit('error_message', { message: 'Connection request not accepted yet', clientId: clientId || null });
       }
       const msg = await Message.create({
         conversation: convo._id,
@@ -113,7 +113,7 @@ io.on('connection', (socket) => {
       io.to(userRoom(to)).emit('receive_message', payload);
     } catch (e) {
       // optionally emit error back
-      socket.emit('error_message', { message: 'Failed to send message' });
+      socket.emit('error_message', { message: 'Failed to send message', clientId: clientId || null });
     }
   });
 
