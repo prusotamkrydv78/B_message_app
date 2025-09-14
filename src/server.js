@@ -9,6 +9,8 @@ import { setIO } from './socket.js';
 import { verifyAccessToken } from './utils/tokens.js';
 import { Message } from './models/Message.js';
 import { Conversation } from './models/Conversation.js';
+import { Group } from './models/Group.js';
+import { GroupMessage } from './models/GroupMessage.js';
 
 dotenv.config();
 
@@ -99,6 +101,67 @@ io.on('connection', (socket) => {
         recipient: to,
         text,
       });
+
+    // --- Groups: join/leave room ---
+    socket.on('join_group', async ({ groupId }) => {
+      try {
+        const g = await Group.findById(groupId).select('members').lean();
+        if (!g) return;
+        const isMember = (g.members || []).some(m => String(m.user) === String(userId));
+        if (!isMember) return;
+        socket.join(`group:${groupId}`);
+      } catch {}
+    });
+
+    socket.on('leave_group', ({ groupId }) => {
+      try { socket.leave(`group:${groupId}`); } catch {}
+    });
+
+    // --- Groups: send message ---
+    socket.on('send_group_message', async ({ groupId, text, clientId }) => {
+      try {
+        if (!groupId || !text) return;
+        const g = await Group.findById(groupId);
+        if (!g) return;
+        const isMember = (g.members || []).some(m => String(m.user) === String(userId));
+        if (!isMember) return;
+        const msg = await GroupMessage.create({ group: groupId, sender: userId, text: String(text).trim() });
+        g.lastMessage = { text: msg.text, sender: msg.sender, at: msg.createdAt };
+        await g.save();
+        io.to(`group:${groupId}`).emit('receive_group_message', {
+          _id: msg._id,
+          group: groupId,
+          sender: userId,
+          text: msg.text,
+          createdAt: msg.createdAt,
+          clientId: clientId || null,
+        });
+      } catch (e) {
+        try { socket.emit('error_group_message', { message: e?.message || 'Failed to send', clientId }); } catch {}
+      }
+    });
+
+    // --- Groups: typing indicator ---
+    socket.on('group_typing', async ({ groupId, isTyping }) => {
+      try {
+        const g = await Group.findById(groupId).select('members').lean();
+        if (!g) return;
+        const isMember = (g.members || []).some(m => String(m.user) === String(userId));
+        if (!isMember) return;
+        socket.to(`group:${groupId}`).emit('group_typing', { groupId, userId, isTyping: !!isTyping });
+      } catch {}
+    });
+
+    // --- Groups: mark seen ---
+    socket.on('group_mark_seen', async ({ groupId, ids = [] }) => {
+      try {
+        const g = await Group.findById(groupId).select('members').lean();
+        if (!g) return;
+        const isMember = (g.members || []).some(m => String(m.user) === String(userId));
+        if (!isMember) return;
+        io.to(`group:${groupId}`).emit('group_messages_seen', { groupId, by: userId, ids });
+      } catch {}
+    });
       // update lastMessage
       convo.lastMessage = { text, sender: userId, at: msg.createdAt };
       await convo.save();

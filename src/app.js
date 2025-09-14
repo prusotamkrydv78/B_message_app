@@ -11,6 +11,8 @@ import contactsRoutes from './routes/contacts.routes.js';
 import conversationsRoutes from './routes/conversations.routes.js';
 import messagesRoutes from './routes/messages.routes.js';
 import callsRoutes from './routes/calls.routes.js';
+import groupsRoutes from './routes/groups.routes.js';
+import groupMessagesRoutes from './routes/groupMessages.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -41,6 +43,8 @@ app.use('/api/v1/contacts', contactsRoutes);
 app.use('/api/v1/conversations', conversationsRoutes);
 app.use('/api/v1/messages', messagesRoutes);
 app.use('/api/v1/calls', callsRoutes);
+app.use('/api/v1/groups', groupsRoutes);
+app.use('/api/v1/group-messages', groupMessagesRoutes);
 
 app.use((req, res, next) => {
   next(createError(404, 'Route not found'));
