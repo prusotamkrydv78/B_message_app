@@ -5,6 +5,7 @@ import { connectDB } from './db/connect.js';
 import { config } from './config/index.js';
 import cors from 'cors';
 import { Server as IOServer } from 'socket.io';
+import { setIO } from './socket.js';
 import { verifyAccessToken } from './utils/tokens.js';
 import { Message } from './models/Message.js';
 import { Conversation } from './models/Conversation.js';
@@ -27,6 +28,9 @@ const io = new IOServer(server, {
     credentials: true,
   },
 });
+
+// Expose io to controllers
+setIO(io);
 
 const userRoom = (userId) => `user:${userId}`;
 // Track currently connected users

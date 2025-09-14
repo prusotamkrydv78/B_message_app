@@ -2,6 +2,10 @@ import createError from 'http-errors';
 import mongoose from 'mongoose';
 import { Conversation } from '../models/Conversation.js';
 import { User } from '../models/User.js';
+import { getIO } from '../socket.js';
+import { userRoom } from '../socket.js';
+import { Message } from '../models/Message.js';
+import { Call } from '../models/Call.js';
 
 export const ConversationsController = {
   listRecent: async (req, res, next) => {
@@ -88,6 +92,25 @@ export const ConversationsController = {
           status: 'pending', 
           requestedBy: me 
         });
+        // Notify recipient about incoming request
+        try {
+          const io = getIO();
+          if (io) {
+            // Fetch minimal requester info
+            const requester = await User.findById(me).select('name phoneNumber countryCode').lean();
+            io.to(userRoom(userId)).emit('conversation_request', {
+              id: convo.id,
+              requestedBy: me,
+              otherUser: {
+                id: requester?._id,
+                name: requester?.name,
+                phoneNumber: requester?.phoneNumber,
+                countryCode: requester?.countryCode,
+              },
+              createdAt: convo.createdAt,
+            });
+          }
+        } catch {}
       }
       
       res.status(201).json({ 
@@ -133,6 +156,23 @@ export const ConversationsController = {
       
       // Get the requester info for response
       const requester = convo.participants.find(p => String(p._id) === String(convo.requestedBy));
+      // Notify requester that their request was accepted
+      try {
+        const io = getIO();
+        if (io) {
+          const recipient = convo.participants.find(p => String(p._id) === String(me));
+          io.to(userRoom(convo.requestedBy)).emit('conversation_accepted', {
+            id: convo.id,
+            acceptedAt: convo.acceptedAt,
+            otherUser: recipient ? {
+              id: recipient._id,
+              name: recipient.name,
+              phoneNumber: recipient.phoneNumber,
+              countryCode: recipient.countryCode,
+            } : null,
+          });
+        }
+      } catch {}
       
       res.json({ 
         id: convo.id, 
@@ -160,7 +200,12 @@ export const ConversationsController = {
       const isParticipant = (convo.participants || []).some((p) => String(p) === String(me));
       if (!isParticipant) throw createError(403, 'Not allowed');
       
-      await Conversation.findByIdAndDelete(id);
+      // Delete conversation and associated records
+      await Promise.all([
+        Conversation.findByIdAndDelete(id),
+        Message.deleteMany({ conversation: id }),
+        Call.deleteMany({ conversation: id }),
+      ]);
       res.json({ success: true, message: 'Conversation deleted' });
     } catch (err) {
       next(err);
