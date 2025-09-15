@@ -8,5 +8,5 @@ export async function connectDB(uri) {
     autoIndex: true,
     serverSelectionTimeoutMS: 5000,
   });
-  console.log('MongoDB connected');
+  //console.log('MongoDB connected');
 }

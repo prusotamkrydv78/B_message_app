@@ -12,7 +12,7 @@ async function main() {
 
   await connectDB(uri);
 
-  console.log('Clearing existing test users (phoneNumber starting with 999)...');
+  //console.log('Clearing existing test users (phoneNumber starting with 999)...');
   await User.deleteMany({ phoneNumber: { $regex: /^999/ } });
 
   const demoUsers = [
@@ -35,7 +35,7 @@ async function main() {
     created.push(user);
   }
 
-  console.log('Created users:', created.map((u) => `${u.name} (${u.phoneNumber})`).join(', '));
+  //console.log('Created users:', created.map((u) => `${u.name} (${u.phoneNumber})`).join(', '));
 
   // Create a couple of sample conversations among the created users
   const [u1, u2, u3] = created;
@@ -51,11 +51,11 @@ async function main() {
     },
   ]);
 
-  console.log('Seed completed.');
+  //console.log('Seed completed.');
   await mongoose.connection.close();
 }
 
 main().catch((err) => {
-  console.error(err);
+  //console.error(err);
   process.exit(1);
 });

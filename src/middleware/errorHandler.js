@@ -3,7 +3,7 @@ export function errorHandler(err, req, res, next) {
   const message = err.message || 'Internal Server Error';
   if (process.env.NODE_ENV !== 'test') {
     // Basic error logging
-    console.error(`[Error] ${status} - ${message}`);
+    //console.error(`[Error] ${status} - ${message}`);
   }
   res.status(status).json({ message });
 }

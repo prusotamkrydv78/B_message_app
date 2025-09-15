@@ -35,7 +35,7 @@ export const MessagesController = {
         .sort({ createdAt: 1 })
         .limit(100);
 
-      console.log('Found calls:', calls); // Debug log
+      //console.log('Found calls:', calls); // Debug log
 
       // Combine messages and calls, sorted by timestamp
       const combined = [
