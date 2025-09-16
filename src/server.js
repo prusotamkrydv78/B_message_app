@@ -1,4 +1,4 @@
-import dotenv from 'dotenv';
+import './config/env.js';
 import http from 'http';
 import { app } from './app.js';
 import { connectDB } from './db/connect.js';
@@ -11,8 +11,6 @@ import { Message } from './models/Message.js';
 import { Conversation } from './models/Conversation.js';
 import { Group } from './models/Group.js';
 import { GroupMessage } from './models/GroupMessage.js';
-
-dotenv.config();
 
 const PORT =   process.env.PORT || 4000;
 app.use(cors({
@@ -82,9 +80,12 @@ io.on('connection', (socket) => {
     io.to(userRoom(otherId)).emit('messages_seen', { by: userId, ids });
   });
 
-  socket.on('send_message', async ({ to, text, conversationId, clientId }) => {
+  socket.on('send_message', async ({ to, text, attachments = [], conversationId, clientId }) => {
     try {
-      if (!to || !text) return;
+      if (!to) return;
+      const hasText = typeof text === 'string' && text.trim().length > 0;
+      const hasAttachments = Array.isArray(attachments) && attachments.length > 0;
+      if (!hasText && !hasAttachments) return;
       // find conversation between userId and to
       let convo = conversationId
         ? await Conversation.findById(conversationId)
@@ -99,7 +100,8 @@ io.on('connection', (socket) => {
         conversation: convo._id,
         sender: userId,
         recipient: to,
-        text,
+        text: hasText ? String(text) : '',
+        attachments: hasAttachments ? attachments : [],
       });
 
     // --- Groups: join/leave room ---
@@ -163,7 +165,9 @@ io.on('connection', (socket) => {
       } catch {}
     });
       // update lastMessage
-      convo.lastMessage = { text, sender: userId, at: msg.createdAt };
+      // keep lastMessage text concise; if only attachments, show a placeholder
+      const lastText = hasText ? String(text) : (hasAttachments ? '[Attachment]' : '');
+      convo.lastMessage = { text: lastText, sender: userId, at: msg.createdAt };
       await convo.save();
 
       const payload = {
@@ -171,7 +175,8 @@ io.on('connection', (socket) => {
         conversation: convo._id,
         sender: userId,
         recipient: to,
-        text,
+        text: msg.text,
+        attachments: msg.attachments || [],
         createdAt: msg.createdAt,
         clientId: clientId || null,
       };

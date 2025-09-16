@@ -6,7 +6,7 @@ const MessageSchema = new mongoose.Schema(
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     recipient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     text: { type: String, default: '' },
-    // future: attachments, status
+    attachments: { type: [Object], default: [] },
   },
   { timestamps: true }
 );
